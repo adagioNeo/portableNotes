@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@4.5.2/dist/sketchy/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <!-- JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-OERcA2EqjJCMA+/3y+gxIOqMEjwtxJY7qPCqsdltbNJuaOe923+mo//f6V8Qbsw3" crossorigin="anonymous"></script>
+  </head>
+  <body>
+    <div class="m-3 card border-primary">
+      <div class="card-header">
+        <h1>My Items</h1>
+      </div>
+      <div class="card-body p-0 mt-2">
+        <ul class="nav nav-tabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <a class="nav-link active" data-bs-toggle="tab" href="#todo" aria-selected="true" role="tab" onclick="constructTable(TODO)">To-do</a>
+          </li>
+          <li class="nav-item" role="presentation">
+            <a class="nav-link" data-bs-toggle="tab" href="#notes" aria-selected="false" tabindex="-1" role="tab" onclick="constructTable(NOTES)">Notes</a>
+          </li>
+        </ul>
+        <div id="myTabContent" class="tab-content">
+          <div class="tab-pane fade show active" id="todo" role="tabpanel">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th scope="col"></th>
+                  <th scope="col">Task</th>
+                  <th scope="col">Due Date</th>
+                  <th scope="col">Link/s</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="todoBody">
+                
+              </tbody>
+            </table>
+          </div>
+          <div class="tab-pane fade" id="notes" role="tabpanel">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th scope="col">Title</th>
+                  <th scope="col">Content</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="notesBody">
+                
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>    
+    </div>
+  </body>
+  <script>
+    var todoList, notesList;
+    const TODO="todo",NOTES="notes";
+    function init(){
+      if(localStorage.getItem(TODO)){
+        todoList = JSON.parse(localStorage.getItem(TODO));
+      } else {
+        todoList = [];
+      }
+      if(localStorage.getItem(NOTES)){
+        notesList = JSON.parse(localStorage.getItem(NOTES));
+      } else {
+        notesList = [];
+      }
+      constructTable(TODO);
+    }
+
+    function remove(name, id){
+      let list;
+      if(name===TODO){
+        list=todoList;
+      } else if (name === NOTES){
+        list=notesList;
+      }
+      let indx;
+      for(let i=0;i<list.length;i++){
+        if(list[i].id===id){
+          indx = i;
+        }
+      }
+      list.splice(indx,1)
+      constructTable(name);
+    }
+
+    function validateForm(tableName){
+      let isValid = true;
+      if(tableName===TODO){
+        $('#task').val()
+        $('#dueDate').val()
+        $('#links').val()
+      } else if(tableName===NOTES) {
+        $('#title').val()
+        $('#content').val()
+      }
+      return isValid;
+    }
+
+    function add(tableName){
+      let obj = {};
+      if(validateForm(tableName)){
+        if(tableName===TODO){
+          obj.id = todoList.length;
+          obj.task = $('#task').val()
+          obj.dueDate = $('#dueDate').val()
+          obj.links = $('#links').val()
+          obj.isDone = false;
+          todoList.push(obj)
+        } else if(tableName===NOTES) {
+          obj.id = notesList.length;
+          obj.title = $('#title').val()
+          obj.content = $('#content').val()
+          notesList.push(obj)
+        }      
+        constructTable(tableName)
+      }
+    }
+
+    function toggleTaskStatus(id){
+      todoList[id].isDone ? todoList[id].isDone = false : todoList[id].isDone = true;
+      constructTable(TODO);
+    }
+    
+    function constructTable(name){
+      let selector = "", list;
+      if(name===TODO){
+        selector="#todoBody";
+        list = todoList;
+      } else if(name===NOTES){
+        selector="#notesBody";
+        list = notesList;
+      }
+      localStorage.setItem(name, JSON.stringify(list));
+      $(selector).html("");
+      let cols = Headers(list);
+      for (let i = 0; i < list.length; i++) {
+        let row = $('<tr/>');  
+        for (let colIndex = 0; colIndex < cols.length; colIndex++){
+          if(name===TODO && colIndex===0){
+            let val = '<input class="form-check-input cstm-checkbox" type="checkbox" onclick="toggleTaskStatus('+list[i].id+')"';
+            list[i].isDone ? val = val+" checked>" : val=val+">";
+            row.append($('<td/>').html(val));
+          }
+          if(cols[colIndex]==='id' || (name===TODO && cols[colIndex]==='isDone')){
+            continue;
+          }
+          let now = new Date();
+          let due = new Date(list[i].dueDate);
+          let diffTime = Math.abs(due - now);
+          let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          if(name===TODO){
+            if(list[i].isDone){
+              row.addClass("table-success");
+            } else if(diffDays<2){
+              row.addClass("table-danger");
+            } else if(diffDays<5) {
+              row.addClass("table-warning");
+            } else {
+              row.addClass("table-light");
+            } 
+          } else{
+            row.addClass("table-dark");
+          }
+          let val = list[i][cols[colIndex]]; 
+          let options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+          if (val == null) {
+            val = "";
+          } else if(cols[colIndex]==='links'){
+            val = "<a href='"+val+"'>Click here</a>"
+          } else if(cols[colIndex]==='dueDate'){
+            val = due.toLocaleDateString(due,options)
+          }
+          if(name===TODO && list[i].isDone){
+            val = "<del>"+val+"</del>";
+          }
+          row.append($('<td/>').html(val));
+        }
+        row.append($('<td/>').html('<button class="btn btn-info" onclick="remove(\''+name+'\','+list[i].id+')">-</button>'));
+        $(selector).append(row);
+      }
+      let row = $('<tr/>');
+      if(name===TODO){
+        row.append($('<td/>').html(""))
+        row.append($('<td/>').html("<input type='text' id='task'></input>"))
+        row.append($('<td/>').html("<input type='datetime-local' id='dueDate'></input>"))
+        row.append($('<td/>').html("<input type='url' id='links'></input>"))
+      } else if(name===NOTES){
+        row.append($('<td/>').html("<input type='text' id='title'></input>"))
+        row.append($('<td/>').html("<textarea id='content'></textarea>"))
+      }
+      row.append($('<td/>').html('<button class="btn btn-danger" onclick="add(\''+name+'\')">+</button>'))
+      $(selector).append(row);
+    }
+    
+    function Headers(list) {
+      let columns = [];
+      for (let i = 0; i < list.length; i++) {
+        let row = list[i];
+        for (let k in row) {
+          if ($.inArray(k, columns) == -1) {
+            columns.push(k);                    
+          }
+        }
+      }            
+      return columns;
+    }     
+    init();
+  </script>
+  <style>
+    input{
+      width: -webkit-fill-available;
+    }
+    textarea{
+      width: -webkit-fill-available;
+    }
+    .cstm-checkbox{
+      margin-left: 0;
+    }
+    .cstm-checkbox:before {
+      left:0;
+    }
+    .cstm-checkbox:after {
+      left: 3px !important;
+      top:-14.45px !important;
+    }
+  </style>
+</html>
